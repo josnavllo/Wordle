@@ -1,0 +1,59 @@
+wordle-multiplayer/
+│
+├── server/
+│   ├── src/
+│   │   ├── config/
+│   │   │   └── ServerConfig.java / .kt
+│   │   │
+│   │   ├── network/
+│   │   │   ├── ClientHandler.java
+│   │   │   ├── MessageType.java
+│   │   │   └── Protocol.java
+│   │   │
+│   │   ├── game/
+│   │   │   ├── WordleGame.java
+│   │   │   ├── Round.java
+│   │   │   ├── GameMode.java
+│   │   │   └── Difficulty.java
+│   │   │
+│   │   ├── dictionary/
+│   │   │   └── DictionaryService.java
+│   │   │
+│   │   ├── records/
+│   │   │   ├── RecordManager.java
+│   │   │   └── PlayerStats.java
+│   │   │
+│   │   ├── util/
+│   │   │   └── JsonUtils.java
+│   │   │
+│   │   └── ServerMain.java
+│   │
+│   ├── resources/
+│   │   ├── server.properties
+│   │   ├── records.json
+│   │   └── dictionary/
+│   │       ├── easy.txt
+│   │       ├── medium.txt
+│   │       └── hard.txt
+│   │
+│   └── README.md
+│
+├── client/
+│   ├── src/
+│   │   ├── network/
+│   │   │   ├── ServerConnection.java
+│   │   │   └── MessageListener.java
+│   │   │
+│   │   ├── ui/
+│   │   │   ├── MainMenu.java
+│   │   │   ├── GameView.java
+│   │   │   └── RecordsView.java
+│   │   │
+│   │   ├── model/
+│   │   │   └── GameConfig.java
+│   │   │
+│   │   └── ClientMain.java
+│   │
+│   └── README.md
+│
+└── README.md

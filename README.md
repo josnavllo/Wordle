@@ -1,1 +1,1 @@
-Adaptación del popular juego Wordle a modo multijugador. Los jugadores compiten para adivinar una pala- bra de 5 letras en el menor número de intentos. En modo PVP, gana quien adivine primero o con menos intentos. En modo PVE, se juega contra el récord del tiempo del servidor. 
+

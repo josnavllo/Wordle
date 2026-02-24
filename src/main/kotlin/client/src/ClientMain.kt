@@ -15,5 +15,6 @@ fun main() {
     val response = input.readLine()
     println("Servidor dice: $response")
 
+
     socket.close()
 }

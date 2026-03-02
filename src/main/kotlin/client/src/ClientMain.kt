@@ -1,5 +1,6 @@
 package org.example.client.src
 
+import org.example.client.src.network.NetworkMessage
 import org.example.client.src.network.ServerConnection
 import org.example.client.src.ui.MainMenu
 
@@ -10,7 +11,7 @@ fun main() {
     try {
         connection.connect()
         // Mandamos un saludo inicial (opcional)
-        connection.sendMessage("""{"type":"HELLO","payload":"Soy el cliente"}""")
+        connection.sendMessage(NetworkMessage(type = "HELLO", payload = "Soy el cliente"))
 
         // Arrancamos el menú principal
         val menu = MainMenu(connection)

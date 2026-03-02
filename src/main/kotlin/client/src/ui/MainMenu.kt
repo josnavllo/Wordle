@@ -1,5 +1,6 @@
 package org.example.client.src.ui
 
+import org.example.client.src.network.NetworkMessage
 import org.example.client.src.network.ServerConnection
 import kotlin.system.exitProcess
 
@@ -18,17 +19,17 @@ class MainMenu(private val connection: ServerConnection) {
             when (readlnOrNull()?.trim()) {
                 "1" -> {
                     println("Buscando partida PVP...")
-                    connection.sendMessage("""{"type":"JOIN_QUEUE","mode":"PVP"}""")
+                    connection.sendMessage(NetworkMessage(type = "JOIN_QUEUE", mode = "PVP"))
                     Thread.sleep(1000) // Pausa breve para ver la respuesta del servidor
                 }
                 "2" -> {
                     println("Iniciando partida PVE...")
-                    connection.sendMessage("""{"type":"START_GAME","mode":"PVE"}""")
+                    connection.sendMessage(NetworkMessage(type = "START_GAME", mode = "PVE"))
                     playGame() // Entramos al bucle de enviar palabras
                 }
                 "3" -> {
                     println("Solicitando records...")
-                    connection.sendMessage("""{"type":"GET_RECORDS"}""")
+                    connection.sendMessage(NetworkMessage(type = "GET_RECORDS"))
                     Thread.sleep(1000)
                 }
                 "4" -> {
@@ -66,7 +67,7 @@ class MainMenu(private val connection: ServerConnection) {
 
             attempts++
             // Enviamos el intento al servidor
-            connection.sendMessage("""{"type":"GUESS","word":"$guess","attempt":$attempts}""")
+            connection.sendMessage(NetworkMessage(type = "GUESS", word = guess, attempt = attempts))
 
             // Pausa breve para dar tiempo a que MessageListener imprima la respuesta
             Thread.sleep(200)

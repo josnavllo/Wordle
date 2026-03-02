@@ -1,12 +1,14 @@
 package org.example.server.src
 
-import org.example.server.network.ClientHandler
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.example.server.src.config.ServerConfig
+import org.example.server.src.network.ClientHandler
 import java.net.ServerSocket
 import java.util.concurrent.atomic.AtomicInteger
-import java.lang.Thread
 
-fun main() {
+fun main() = runBlocking { // Envolvemos todo en un runBlocking para poder lanzar corrutinas
 
     val config = ServerConfig.load()
     val serverSocket = ServerSocket(config.port)
@@ -32,6 +34,10 @@ fun main() {
         println("Cliente aceptado. Activos: ${activeClients.get()}")
 
         val handler = ClientHandler(clientSocket, activeClients)
-        Thread(handler).start()
+
+        // Usamos una corrutina en el hilo de IO para manejar la concurrencia
+        launch(Dispatchers.IO) {
+            handler.run()
+        }
     }
 }

@@ -1,4 +1,9 @@
 package org.example.server.src.records
 
-class PlayerStats {
-}
+data class PlayerStats(
+    val playerName: String = "Jugador",
+    var gamesPlayedPVE: Int = 0,
+    var gamesWonPVE: Int = 0,
+    var currentStreak: Int = 0,
+    var maxStreak: Int = 0
+)

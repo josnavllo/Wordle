@@ -27,6 +27,13 @@ class MessageListener(private val input: BufferedReader) : Runnable {
                 "WELCOME", "START_GAME" -> {
                     // 🔹 Los silenciamos por consola para no romper el diseño del menú principal
                 }
+                "RECORDS_DATA" -> {
+                    println("\n=== RECORDS DEL SERVIDOR ===")
+                    // Mostramos el JSON "crudo" que nos manda el servidor de momento
+                    println(message.payload)
+                    println("============================")
+                    print("> ")
+                }
                 "GUESS_RESULT" -> {
                     // Formateamos el resultado de la palabra
                     val resultString = message.result?.joinToString(" ") {

@@ -1,12 +1,12 @@
 package client.src.ui
 
-import client.src.network.NetworkMessage
 import client.src.network.ServerConnection
+import client.src.network.NetworkMessage
 import kotlin.system.exitProcess
 
 class MainMenu(private val connection: ServerConnection) {
 
-    private var currentDifficulty = "EASY" // Dificultad por defecto
+    private var currentDifficulty = "EASY"
 
     fun show() {
         while (true) {
@@ -21,13 +21,7 @@ class MainMenu(private val connection: ServerConnection) {
             when (readlnOrNull()?.trim()) {
                 "1" -> {
                     println("Buscando partida PVP ($currentDifficulty)...")
-                    connection.sendMessage(
-                        NetworkMessage(
-                            type = "JOIN_QUEUE",
-                            mode = "PVP",
-                            difficulty = currentDifficulty
-                        )
-                    )
+                    connection.sendMessage(NetworkMessage(type = "JOIN_QUEUE", mode = "PVP", difficulty = currentDifficulty))
                     playGame()
                 }
                 "2" -> {
@@ -71,25 +65,45 @@ class MainMenu(private val connection: ServerConnection) {
         println("--- MODO JUEGO INICIADO ---")
         println("(Escribe 'salir' en cualquier momento para volver al menú)")
         var attempts = 0
+        GameState.isGameActive = true
 
-        while (true) {
+        while (GameState.isGameActive) {
             print("> ")
-            val guess = readlnOrNull()?.uppercase()?.trim() ?: continue
+            val guess = readlnOrNull()?.uppercase()?.trim() ?: ""
+
+            // 1. Si el rival ha ganado o abandonado mientras esperábamos,
+            // ese ENTER que acabas de pulsar nos sirve directamente para salir.
+            if (!GameState.isGameActive) {
+                break
+            }
 
             if (guess == "SALIR") {
                 println("Abandonando la partida...")
                 connection.sendMessage(NetworkMessage(type = "LEAVE_GAME"))
+                GameState.isGameActive = false
                 break
             }
 
             if (guess.length != 5) {
-                println("La palabra debe tener exactamente 5 letras.")
+                if (guess.isNotEmpty()) {
+                    println("La palabra debe tener exactamente 5 letras.")
+                }
                 continue
             }
 
             attempts++
             connection.sendMessage(NetworkMessage(type = "GUESS", word = guess, attempt = attempts))
-            Thread.sleep(200)
+
+            // Damos tiempo al servidor para comprobar si hemos ganado
+            Thread.sleep(300)
+
+            // 2. Si ESTA última palabra que hemos enviado terminó el juego...
+            if (!GameState.isGameActive) {
+                // El MessageListener acaba de imprimir "Pulsa ENTER...",
+                // así que pausamos este código esperando a que lo pulses.
+                readlnOrNull()
+                break
+            }
         }
     }
 }

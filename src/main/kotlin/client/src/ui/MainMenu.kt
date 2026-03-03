@@ -1,7 +1,7 @@
 package client.src.ui
 
 import client.src.network.NetworkMessage
-import org.example.client.src.network.ServerConnection
+import client.src.network.ServerConnection
 import kotlin.system.exitProcess
 
 class MainMenu(private val connection: ServerConnection) {

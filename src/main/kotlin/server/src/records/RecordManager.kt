@@ -1,4 +1,4 @@
-package org.example.server.src.records
+package server.src.records
 
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken

@@ -1,4 +1,4 @@
-package org.example.server.src.dictionary
+package server.src.dictionary
 
 object DictionaryService {
     fun pickRandomWord(filename: String, length: Int): String {

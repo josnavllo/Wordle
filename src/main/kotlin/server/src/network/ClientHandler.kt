@@ -1,12 +1,12 @@
 package server.src.network
 
-import client.src.network.NetworkMessage
 import com.google.gson.Gson
-import org.example.server.network.LetterResult
-import org.example.server.src.dictionary.DictionaryService
+import org.example.server.src.network.LetterResult
+import org.example.server.src.network.NetworkMessage
+import server.src.dictionary.DictionaryService
 import server.src.game.GameManager
 import server.src.game.PvPGame
-import org.example.server.src.records.RecordManager
+import server.src.records.RecordManager
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.InputStreamReader
@@ -26,7 +26,7 @@ class ClientHandler(
     var currentGame: PvPGame? = null
     var inPvPMode = false
 
-    // Hacemos el sendMessage público para que PvPGame pueda enviar mensajes asíncronos
+    // 🔹 AQUÍ ESTÁ ARREGLADO: Ahora usa el NetworkMessage normal de este mismo paquete
     @Synchronized
     fun sendMessage(msg: NetworkMessage) {
         try {
@@ -62,14 +62,24 @@ class ClientHandler(
                     }
                     "JOIN_QUEUE" -> {
                         inPvPMode = true
-                        sendMessage(NetworkMessage(type = "INFO", payload = "Buscando oponente para PVP..."))
-                        GameManager.joinQueue(this)
+                        val diff = msg.difficulty ?: "EASY"
+                        sendMessage(NetworkMessage(type = "INFO", payload = "Buscando oponente para PVP ($diff)..."))
+                        GameManager.joinQueue(this, diff)
                     }
                     "START_GAME" -> {
                         inPvPMode = false
-                        word = DictionaryService.pickRandomWord("easy.txt", 5)
+                        val diff = msg.difficulty ?: "EASY"
+                        word = DictionaryService.pickRandomWord("${diff.lowercase()}.txt", 5)
                         attempts = 0
-                        sendMessage(NetworkMessage(type = "START_GAME", mode = "PVE", wordLength = 5, rounds = 1))
+                        sendMessage(
+                            NetworkMessage(
+                                type = "START_GAME",
+                                mode = "PVE",
+                                difficulty = diff,
+                                wordLength = 5,
+                                rounds = 1
+                            )
+                        )
                     }
                     "GUESS" -> {
                         val guessedWord = msg.word?.uppercase() ?: continue
@@ -83,7 +93,12 @@ class ClientHandler(
                             if (word.isEmpty()) continue
                             attempts++
                             if (guessedWord.length != word.length) {
-                                sendMessage(NetworkMessage(type = "ERROR", payload = "La palabra debe tener ${word.length} letras"))
+                                sendMessage(
+                                    NetworkMessage(
+                                        type = "ERROR",
+                                        payload = "La palabra debe tener ${word.length} letras"
+                                    )
+                                )
                                 continue
                             }
 
@@ -97,11 +112,23 @@ class ClientHandler(
                             sendMessage(NetworkMessage(type = "GUESS_RESULT", word = guessedWord, result = resultList))
 
                             if (guessedWord == word) {
-                                sendMessage(NetworkMessage(type = "ROUND_WINNER", player = "CLIENT", attempts = attempts, word = word))
+                                sendMessage(
+                                    NetworkMessage(
+                                        type = "ROUND_WINNER",
+                                        player = "CLIENT",
+                                        attempts = attempts,
+                                        word = word
+                                    )
+                                )
                                 RecordManager.recordWinPVE("Global")
                                 word = ""
                             } else if (attempts >= maxAttempts) {
-                                sendMessage(NetworkMessage(type = "ERROR", payload = "¡Te quedaste sin intentos! La palabra era: $word"))
+                                sendMessage(
+                                    NetworkMessage(
+                                        type = "ERROR",
+                                        payload = "¡Te quedaste sin intentos! La palabra era: $word"
+                                    )
+                                )
                                 RecordManager.recordLossPVE("Global")
                                 word = ""
                             }
@@ -111,19 +138,6 @@ class ClientHandler(
                         GameManager.leaveQueue(this)
                         currentGame?.playerDisconnected(this)
                         inPvPMode = false
-                    }
-                    "JOIN_QUEUE" -> {
-                        inPvPMode = true
-                        val diff = msg.difficulty ?: "EASY"
-                        sendMessage(NetworkMessage(type = "INFO", payload = "Buscando oponente para PVP ($diff)..."))
-                        GameManager.joinQueue(this, diff)
-                    }
-                    "START_GAME" -> {
-                        inPvPMode = false
-                        val diff = msg.difficulty ?: "EASY"
-                        word = DictionaryService.pickRandomWord("${diff.lowercase()}.txt", 5)
-                        attempts = 0
-                        sendMessage(NetworkMessage(type = "START_GAME", mode = "PVE", difficulty = diff, wordLength = 5, rounds = 1))
                     }
                 }
             }

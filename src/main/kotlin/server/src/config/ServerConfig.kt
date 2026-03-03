@@ -1,4 +1,4 @@
-package org.example.server.src.config
+package server.src.config
 
 import java.util.Properties
 

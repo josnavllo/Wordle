@@ -1,4 +1,4 @@
-package org.example.client.src.network
+package client.src.network
 
 import com.google.gson.Gson
 import java.io.BufferedReader

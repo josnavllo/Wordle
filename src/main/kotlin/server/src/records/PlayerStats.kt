@@ -1,4 +1,4 @@
-package org.example.server.src.records
+package server.src.records
 
 data class PlayerStats(
     val playerName: String = "Jugador",

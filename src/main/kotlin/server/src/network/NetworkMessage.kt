@@ -1,9 +1,10 @@
-package org.example.server.network
+package org.example.server.src.network
 
 data class NetworkMessage(
     val type: String,
     val payload: String? = null,
     val mode: String? = null,
+    val difficulty: String? = null, // 🔹 ¡ASEGÚRATE DE QUE TIENE "? = null"! 🔹
     val wordLength: Int? = null,
     val rounds: Int? = null,
     val word: String? = null,

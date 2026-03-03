@@ -1,6 +1,5 @@
-package org.example.client.src.network
+package client.src.network
 
-import client.src.network.NetworkMessage
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject

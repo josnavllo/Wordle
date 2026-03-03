@@ -1,10 +1,10 @@
-package org.example.server.src
+package server.src
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import server.src.network.ClientHandler // Import actualizado a la nueva carpeta
-import org.example.server.src.config.ServerConfig
+import server.src.config.ServerConfig
 import java.net.ServerSocket
 import java.util.concurrent.atomic.AtomicInteger
 

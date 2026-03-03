@@ -47,8 +47,9 @@ class PvPGame(private val player1: ClientHandler, private val player2: ClientHan
             player.sendMessage(NetworkMessage(type = "ROUND_WINNER", word = secretWord, attempts = attempt))
             opponent.sendMessage(NetworkMessage(type = "ERROR", payload = "¡Has perdido! Tu rival adivinó la palabra: $secretWord"))
 
-            RecordManager.recordWinPVP("Global")
-            RecordManager.recordLossPVP("Global")
+            // 🔹 Usamos el nombre del jugador en lugar de "Global"
+            RecordManager.recordWinPVP(player.playerName)
+            RecordManager.recordLossPVP(opponent.playerName)
 
             player.currentGame = null
             opponent.currentGame = null
@@ -63,6 +64,10 @@ class PvPGame(private val player1: ClientHandler, private val player2: ClientHan
         isGameOver = true
         val opponent = if (player == player1) player2 else player1
         opponent.sendMessage(NetworkMessage(type = "ERROR", payload = "Tu rival se ha desconectado. ¡Ganas por abandono!"))
+
+        // 🔹 Si el rival se desconecta en medio de la partida, le damos la victoria al que se quedó
+        RecordManager.recordWinPVP(opponent.playerName)
+        RecordManager.recordLossPVP(player.playerName)
 
         player.currentGame = null
         opponent.currentGame = null

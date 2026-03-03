@@ -25,8 +25,8 @@ class ClientHandler(
     // Estado del jugador
     var currentGame: PvPGame? = null
     var inPvPMode = false
+    var playerName: String = "Anónimo" // 🔹 NUEVO: Aquí guardaremos su nombre
 
-    // 🔹 AQUÍ ESTÁ ARREGLADO: Ahora usa el NetworkMessage normal de este mismo paquete
     @Synchronized
     fun sendMessage(msg: NetworkMessage) {
         try {
@@ -43,7 +43,7 @@ class ClientHandler(
             val input = BufferedReader(InputStreamReader(clientSocket.getInputStream()))
             output = BufferedWriter(OutputStreamWriter(clientSocket.getOutputStream()))
 
-            input.readLine() // Ignoramos hello inicial
+            // Enviamos la bienvenida
             sendMessage(NetworkMessage(type = "WELCOME", payload = "Hola cliente"))
 
             var word = ""
@@ -57,6 +57,11 @@ class ClientHandler(
                 } catch (e: Exception) { continue }
 
                 when (msg.type) {
+                    "HELLO" -> {
+                        // 🔹 NUEVO: Cuando llega el saludo, guardamos su nombre
+                        playerName = msg.player ?: "Anónimo"
+                        println("Se ha conectado el jugador: $playerName")
+                    }
                     "GET_RECORDS" -> {
                         sendMessage(NetworkMessage(type = "RECORDS_DATA", payload = RecordManager.getRecordsJson()))
                     }
@@ -71,34 +76,19 @@ class ClientHandler(
                         val diff = msg.difficulty ?: "EASY"
                         word = DictionaryService.pickRandomWord("${diff.lowercase()}.txt", 5)
                         attempts = 0
-                        sendMessage(
-                            NetworkMessage(
-                                type = "START_GAME",
-                                mode = "PVE",
-                                difficulty = diff,
-                                wordLength = 5,
-                                rounds = 1
-                            )
-                        )
+                        sendMessage(NetworkMessage(type = "START_GAME", mode = "PVE", difficulty = diff, wordLength = 5, rounds = 1))
                     }
                     "GUESS" -> {
                         val guessedWord = msg.word?.uppercase() ?: continue
 
-                        // Si está en una partida PVP, dejamos que PvPGame se encargue
                         if (inPvPMode && currentGame != null) {
                             currentGame?.processGuess(this, guessedWord, msg.attempt ?: 1)
                         }
-                        // Si está en PVE, usamos la lógica clásica
                         else if (!inPvPMode) {
                             if (word.isEmpty()) continue
                             attempts++
                             if (guessedWord.length != word.length) {
-                                sendMessage(
-                                    NetworkMessage(
-                                        type = "ERROR",
-                                        payload = "La palabra debe tener ${word.length} letras"
-                                    )
-                                )
+                                sendMessage(NetworkMessage(type = "ERROR", payload = "La palabra debe tener ${word.length} letras"))
                                 continue
                             }
 
@@ -112,24 +102,14 @@ class ClientHandler(
                             sendMessage(NetworkMessage(type = "GUESS_RESULT", word = guessedWord, result = resultList))
 
                             if (guessedWord == word) {
-                                sendMessage(
-                                    NetworkMessage(
-                                        type = "ROUND_WINNER",
-                                        player = "CLIENT",
-                                        attempts = attempts,
-                                        word = word
-                                    )
-                                )
-                                RecordManager.recordWinPVE("Global")
+                                sendMessage(NetworkMessage(type = "ROUND_WINNER", player = playerName, attempts = attempts, word = word))
+                                // 🔹 Guardamos la victoria PVE usando el nombre del jugador
+                                RecordManager.recordWinPVE(playerName)
                                 word = ""
                             } else if (attempts >= maxAttempts) {
-                                sendMessage(
-                                    NetworkMessage(
-                                        type = "ERROR",
-                                        payload = "¡Te quedaste sin intentos! La palabra era: $word"
-                                    )
-                                )
-                                RecordManager.recordLossPVE("Global")
+                                sendMessage(NetworkMessage(type = "ERROR", payload = "¡Te quedaste sin intentos! La palabra era: $word"))
+                                // 🔹 Guardamos la derrota PVE usando su nombre
+                                RecordManager.recordLossPVE(playerName)
                                 word = ""
                             }
                         }

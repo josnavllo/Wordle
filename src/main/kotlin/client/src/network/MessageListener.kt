@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import client.src.ui.GameState
+import client.src.ui.WordleUI
 import java.io.BufferedReader
 
 class MessageListener(private val input: BufferedReader) : Runnable {
@@ -33,28 +34,32 @@ class MessageListener(private val input: BufferedReader) : Runnable {
             val message = gson.fromJson(jsonResponse, NetworkMessage::class.java)
 
             when (message.type) {
-                "WELCOME", "START_GAME" -> { }
+                "WELCOME" -> { }
+                "START_GAME" -> {
+                    // Reseteamos la pantalla cuando empieza la partida
+                    WordleUI.reset(pvp = message.mode == "PVP")
+                    WordleUI.draw()
+                    print("\nEscribe tu palabra > ")
+                }
                 "INFO" -> {
                     println("\n[Info]: ${message.payload}")
                     print("> ")
                 }
                 "GUESS_RESULT" -> {
-                    val resultString = message.result?.joinToString(" ") {
-                        when (it.status) {
-                            "CORRECT" -> "$BG_GREEN ${it.letter} $RESET"
-                            "PRESENT" -> "$BG_YELLOW ${it.letter} $RESET"
-                            "ABSENT" -> "$BG_GRAY ${it.letter} $RESET"
-                            else -> " ${it.letter} "
-                        }
-                    }
-                    println("\nIntento: $resultString")
-                    print("> ")
+                    // 🔹 Añadimos el intento a la interfaz y redibujamos
+                    message.result?.let { WordleUI.addAttempt(it) }
+                    WordleUI.draw()
+                    print("\nEscribe tu palabra > ")
+                }
+                "OPPONENT_PROGRESS" -> { // 🔹 Esto lo prepararemos en el servidor luego
+                    WordleUI.opponentAttempts = message.attempts ?: 0
+                    WordleUI.draw()
+                    print("\nEscribe tu palabra > ")
                 }
                 "ROUND_WINNER" -> {
                     println("\n🎉 ¡HAS GANADO! La palabra era ${message.word}. (Intentos: ${message.attempts}) 🎉")
                     println("👉 Pulsa ENTER para volver al menú principal.")
-                    GameState.isGameActive = false // 🔹 Avisamos de que el juego acabó
-                    print("> ")
+                    GameState.isGameActive = false
                 }
                 "RECORDS_DATA" -> {
                     println("\n=== 🏆 RECORDS DEL SERVIDOR 🏆 ===")

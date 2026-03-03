@@ -1,6 +1,6 @@
-package org.example.server.src.game
+package server.src.game
 
-import org.example.server.src.network.ClientHandler
+import server.src.network.ClientHandler
 import java.util.concurrent.ConcurrentLinkedQueue
 
 object GameManager {

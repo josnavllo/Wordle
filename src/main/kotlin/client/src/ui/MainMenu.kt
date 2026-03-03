@@ -1,10 +1,12 @@
 package org.example.client.src.ui
 
 import org.example.client.src.network.ServerConnection
-import org.example.client.src.network.NetworkMessage
+import org.example.server.network.NetworkMessage
 import kotlin.system.exitProcess
 
 class MainMenu(private val connection: ServerConnection) {
+
+    private var currentDifficulty = "EASY" // Dificultad por defecto
 
     fun show() {
         while (true) {
@@ -12,20 +14,19 @@ class MainMenu(private val connection: ServerConnection) {
             println("1. Nueva Partida PVP (contra otro jugador)")
             println("2. Nueva Partida PVE (contra la IA)")
             println("3. Ver Records")
-            println("4. Configuración")
+            println("4. Configuración (Actual: $currentDifficulty)")
             println("5. Salir")
             print("Elige una opción: ")
 
             when (readlnOrNull()?.trim()) {
                 "1" -> {
-                    println("Buscando partida PVP...")
-                    connection.sendMessage(NetworkMessage(type = "JOIN_QUEUE", mode = "PVP"))
-                    // ¡AQUÍ ESTABA EL ERROR! Faltaba entrar al bucle del juego
+                    println("Buscando partida PVP ($currentDifficulty)...")
+                    connection.sendMessage(NetworkMessage(type = "JOIN_QUEUE", mode = "PVP", difficulty = currentDifficulty))
                     playGame()
                 }
                 "2" -> {
-                    println("Iniciando partida PVE...")
-                    connection.sendMessage(NetworkMessage(type = "START_GAME", mode = "PVE"))
+                    println("Iniciando partida PVE ($currentDifficulty)...")
+                    connection.sendMessage(NetworkMessage(type = "START_GAME", mode = "PVE", difficulty = currentDifficulty))
                     playGame()
                 }
                 "3" -> {
@@ -33,10 +34,7 @@ class MainMenu(private val connection: ServerConnection) {
                     connection.sendMessage(NetworkMessage(type = "GET_RECORDS"))
                     Thread.sleep(1000)
                 }
-                "4" -> {
-                    println("Configuración en construcción...")
-                    Thread.sleep(500)
-                }
+                "4" -> showConfigMenu()
                 "5" -> {
                     println("¡Hasta pronto!")
                     connection.disconnect()
@@ -45,6 +43,22 @@ class MainMenu(private val connection: ServerConnection) {
                 else -> println("Opción no válida. Inténtalo de nuevo.")
             }
         }
+    }
+
+    private fun showConfigMenu() {
+        println("\n--- CONFIGURACIÓN DE DIFICULTAD ---")
+        println("1. FÁCIL   (Palabras comunes)")
+        println("2. MEDIO   (Palabras intermedias)")
+        println("3. DIFÍCIL (Palabras complejas)")
+        print("Elige una dificultad: ")
+
+        when (readlnOrNull()?.trim()) {
+            "1" -> currentDifficulty = "EASY"
+            "2" -> currentDifficulty = "MEDIUM"
+            "3" -> currentDifficulty = "HARD"
+            else -> println("Opción no válida. Se mantiene $currentDifficulty.")
+        }
+        println("✅ Dificultad configurada a: $currentDifficulty")
     }
 
     private fun playGame() {
@@ -58,7 +72,6 @@ class MainMenu(private val connection: ServerConnection) {
 
             if (guess == "SALIR") {
                 println("Abandonando la partida...")
-                // Opcional: Avisar al servidor para que nos saque de la cola si estábamos buscando
                 connection.sendMessage(NetworkMessage(type = "LEAVE_GAME"))
                 break
             }
@@ -69,10 +82,7 @@ class MainMenu(private val connection: ServerConnection) {
             }
 
             attempts++
-            // Enviamos el intento al servidor
             connection.sendMessage(NetworkMessage(type = "GUESS", word = guess, attempt = attempts))
-
-            // Pausa breve para dar tiempo a que MessageListener imprima la respuesta
             Thread.sleep(200)
         }
     }

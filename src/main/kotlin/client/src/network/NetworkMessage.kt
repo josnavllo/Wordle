@@ -1,4 +1,4 @@
-package org.example.client.src.network
+package client.src.network
 
 data class NetworkMessage(
     val type: String,

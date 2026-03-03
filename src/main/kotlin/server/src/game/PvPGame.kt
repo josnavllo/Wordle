@@ -1,9 +1,9 @@
-package org.example.server.src.game
+package server.src.game
 
+import org.example.server.network.LetterResult
+import org.example.server.network.NetworkMessage
 import org.example.server.src.dictionary.DictionaryService
-import org.example.server.src.network.ClientHandler
-import org.example.server.src.network.LetterResult
-import org.example.server.src.network.NetworkMessage
+import server.src.network.ClientHandler
 import org.example.server.src.records.RecordManager
 
 class PvPGame(private val player1: ClientHandler, private val player2: ClientHandler, private val difficulty: String) {

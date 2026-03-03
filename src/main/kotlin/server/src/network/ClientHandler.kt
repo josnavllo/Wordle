@@ -1,11 +1,11 @@
-package org.example.server.src.network
+package server.src.network
 
 import com.google.gson.Gson
 import org.example.server.network.LetterResult
 import org.example.server.network.NetworkMessage
 import org.example.server.src.dictionary.DictionaryService
-import org.example.server.src.game.GameManager
-import org.example.server.src.game.PvPGame
+import server.src.game.GameManager
+import server.src.game.PvPGame
 import org.example.server.src.records.RecordManager
 import java.io.BufferedReader
 import java.io.BufferedWriter
@@ -111,6 +111,19 @@ class ClientHandler(
                         GameManager.leaveQueue(this)
                         currentGame?.playerDisconnected(this)
                         inPvPMode = false
+                    }
+                    "JOIN_QUEUE" -> {
+                        inPvPMode = true
+                        val diff = msg.difficulty ?: "EASY"
+                        sendMessage(NetworkMessage(type = "INFO", payload = "Buscando oponente para PVP ($diff)..."))
+                        GameManager.joinQueue(this, diff)
+                    }
+                    "START_GAME" -> {
+                        inPvPMode = false
+                        val diff = msg.difficulty ?: "EASY"
+                        word = DictionaryService.pickRandomWord("${diff.lowercase()}.txt", 5)
+                        attempts = 0
+                        sendMessage(NetworkMessage(type = "START_GAME", mode = "PVE", difficulty = diff, wordLength = 5, rounds = 1))
                     }
                 }
             }

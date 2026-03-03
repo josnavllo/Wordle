@@ -1,12 +1,20 @@
 package org.example.client.src.network
 
 import com.google.gson.Gson
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import java.io.BufferedReader
 
 class MessageListener(private val input: BufferedReader) : Runnable {
     @Volatile
     private var running = true
     private val gson = Gson()
+
+    // 🔹 Códigos ANSI para colorear la consola 🔹
+    private val RESET = "\u001B[0m"
+    private val BG_GREEN = "\u001B[42m\u001B[30m"  // Fondo Verde, Letra Negra (CORRECTO)
+    private val BG_YELLOW = "\u001B[43m\u001B[30m" // Fondo Amarillo, Letra Negra (PRESENTE)
+    private val BG_GRAY = "\u001B[100m\u001B[37m"  // Fondo Gris Oscuro, Letra Blanca (AUSENTE)
 
     override fun run() {
         try {
@@ -25,25 +33,47 @@ class MessageListener(private val input: BufferedReader) : Runnable {
 
             when (message.type) {
                 "WELCOME", "START_GAME" -> {
-                    // 🔹 Los silenciamos por consola para no romper el diseño del menú principal
+                    // Silenciados para mantener limpio el menú
                 }
-                "RECORDS_DATA" -> {
-                    println("\n=== RECORDS DEL SERVIDOR ===")
-                    // Mostramos el JSON "crudo" que nos manda el servidor de momento
-                    println(message.payload)
-                    println("============================")
+                "INFO" -> {
+                    println("\n[Info]: ${message.payload}")
                     print("> ")
                 }
                 "GUESS_RESULT" -> {
-                    // Formateamos el resultado de la palabra
+                    // 🔹 Aplicamos la magia de los colores aquí 🔹
                     val resultString = message.result?.joinToString(" ") {
-                        "${it.letter}(${it.status.substring(0, 1)})" // Ejemplo: P(C) E(C) R(C) R(C) O(C)
+                        when (it.status) {
+                            "CORRECT" -> "$BG_GREEN ${it.letter} $RESET"
+                            "PRESENT" -> "$BG_YELLOW ${it.letter} $RESET"
+                            "ABSENT" -> "$BG_GRAY ${it.letter} $RESET"
+                            else -> " ${it.letter} "
+                        }
                     }
-                    println("\nResultado: $resultString")
+                    println("\nIntento: $resultString")
                     print("> ")
                 }
                 "ROUND_WINNER" -> {
-                    println("\n🎉 ¡HAS GANADO! La palabra era ${message.word} en ${message.attempts} intentos. 🎉")
+                    println("\n🎉 ¡HAS GANADO! La palabra era ${message.word}. (Intentos: ${message.attempts}) 🎉")
+                    print("> ")
+                }
+                "RECORDS_DATA" -> {
+                    // 🔹 Formateamos el JSON en una tabla legible 🔹
+                    println("\n=== 🏆 RECORDS DEL SERVIDOR 🏆 ===")
+                    try {
+                        val statsArray = gson.fromJson(message.payload, JsonArray::class.java)
+                        for (element in statsArray) {
+                            val stats = element as JsonObject
+                            val name = stats.get("playerName").asString
+                            val wonPVE = stats.get("gamesWonPVE")?.asInt ?: 0
+                            val wonPVP = stats.get("gamesWonPVP")?.asInt ?: 0
+                            val maxStreak = stats.get("maxStreak")?.asInt ?: 0
+
+                            println("👤 Jugador: $name | 🟢 Victorias PVE: $wonPVE | ⚔️ Victorias PVP: $wonPVP | 🔥 Racha Máxima: $maxStreak")
+                        }
+                    } catch (e: Exception) {
+                        println(message.payload) // Fallback por si el JSON viene raro
+                    }
+                    println("==================================")
                     print("> ")
                 }
                 "ERROR" -> {
@@ -56,7 +86,7 @@ class MessageListener(private val input: BufferedReader) : Runnable {
                 }
             }
         } catch (e: Exception) {
-            // Si llega un JSON mal formado o un texto puro, lo imprimimos tal cual
+            // Si no es un JSON o está mal formado
             println("\n[Mensaje Raw]: $jsonResponse")
             print("> ")
         }

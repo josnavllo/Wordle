@@ -1,8 +1,8 @@
 package server.src.network
 
+import client.src.network.NetworkMessage
 import com.google.gson.Gson
 import org.example.server.network.LetterResult
-import org.example.server.network.NetworkMessage
 import org.example.server.src.dictionary.DictionaryService
 import server.src.game.GameManager
 import server.src.game.PvPGame

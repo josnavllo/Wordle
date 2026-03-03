@@ -2,7 +2,7 @@ package org.example.client.src
 
 import org.example.client.src.network.NetworkMessage
 import org.example.client.src.network.ServerConnection
-import org.example.client.src.ui.MainMenu
+import client.src.ui.MainMenu
 
 fun main() {
     println("Conectando al servidor...")

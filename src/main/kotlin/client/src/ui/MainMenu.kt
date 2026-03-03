@@ -1,7 +1,7 @@
-package org.example.client.src.ui
+package client.src.ui
 
+import client.src.network.NetworkMessage
 import org.example.client.src.network.ServerConnection
-import org.example.server.network.NetworkMessage
 import kotlin.system.exitProcess
 
 class MainMenu(private val connection: ServerConnection) {
@@ -21,7 +21,13 @@ class MainMenu(private val connection: ServerConnection) {
             when (readlnOrNull()?.trim()) {
                 "1" -> {
                     println("Buscando partida PVP ($currentDifficulty)...")
-                    connection.sendMessage(NetworkMessage(type = "JOIN_QUEUE", mode = "PVP", difficulty = currentDifficulty))
+                    connection.sendMessage(
+                        NetworkMessage(
+                            type = "JOIN_QUEUE",
+                            mode = "PVP",
+                            difficulty = currentDifficulty
+                        )
+                    )
                     playGame()
                 }
                 "2" -> {

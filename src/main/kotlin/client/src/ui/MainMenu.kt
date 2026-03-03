@@ -1,7 +1,7 @@
 package org.example.client.src.ui
 
-import org.example.client.src.network.NetworkMessage
 import org.example.client.src.network.ServerConnection
+import org.example.client.src.network.NetworkMessage
 import kotlin.system.exitProcess
 
 class MainMenu(private val connection: ServerConnection) {
@@ -20,12 +20,13 @@ class MainMenu(private val connection: ServerConnection) {
                 "1" -> {
                     println("Buscando partida PVP...")
                     connection.sendMessage(NetworkMessage(type = "JOIN_QUEUE", mode = "PVP"))
-                    Thread.sleep(1000) // Pausa breve para ver la respuesta del servidor
+                    // ¡AQUÍ ESTABA EL ERROR! Faltaba entrar al bucle del juego
+                    playGame()
                 }
                 "2" -> {
                     println("Iniciando partida PVE...")
                     connection.sendMessage(NetworkMessage(type = "START_GAME", mode = "PVE"))
-                    playGame() // Entramos al bucle de enviar palabras
+                    playGame()
                 }
                 "3" -> {
                     println("Solicitando records...")
@@ -57,6 +58,8 @@ class MainMenu(private val connection: ServerConnection) {
 
             if (guess == "SALIR") {
                 println("Abandonando la partida...")
+                // Opcional: Avisar al servidor para que nos saque de la cola si estábamos buscando
+                connection.sendMessage(NetworkMessage(type = "LEAVE_GAME"))
                 break
             }
 

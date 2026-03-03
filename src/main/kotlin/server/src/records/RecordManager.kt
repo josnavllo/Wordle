@@ -65,4 +65,18 @@ object RecordManager {
         }
         return player
     }
+    @Synchronized
+    fun recordWinPVP(playerName: String = "Global") {
+        val player = getOrCreatePlayer(playerName)
+        player.gamesPlayedPVP++
+        player.gamesWonPVP++
+        save()
+    }
+
+    @Synchronized
+    fun recordLossPVP(playerName: String = "Global") {
+        val player = getOrCreatePlayer(playerName)
+        player.gamesPlayedPVP++
+        save()
+    }
 }

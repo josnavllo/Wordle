@@ -1,13 +1,18 @@
-package org.example.server.network
+package org.example.server.src.network
 
 import com.google.gson.Gson
+import org.example.server.network.LetterResult
+import org.example.server.network.NetworkMessage
+import org.example.server.src.dictionary.DictionaryService
+import org.example.server.src.game.GameManager
+import org.example.server.src.game.PvPGame
 import org.example.server.src.records.RecordManager
-import java.net.Socket
-import java.util.concurrent.atomic.AtomicInteger
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
+import java.net.Socket
+import java.util.concurrent.atomic.AtomicInteger
 
 class ClientHandler(
     private val clientSocket: Socket,
@@ -15,96 +20,107 @@ class ClientHandler(
 ) : Runnable {
 
     private val gson = Gson()
+    private lateinit var output: BufferedWriter
+
+    // Estado del jugador
+    var currentGame: PvPGame? = null
+    var inPvPMode = false
+
+    // Hacemos el sendMessage público para que PvPGame pueda enviar mensajes asíncronos
+    @Synchronized
+    fun sendMessage(msg: NetworkMessage) {
+        try {
+            output.write(gson.toJson(msg))
+            output.newLine()
+            output.flush()
+        } catch (e: Exception) {
+            println("Error enviando mensaje a cliente: ${e.message}")
+        }
+    }
 
     override fun run() {
         try {
             val input = BufferedReader(InputStreamReader(clientSocket.getInputStream()))
-            val output = BufferedWriter(OutputStreamWriter(clientSocket.getOutputStream()))
+            output = BufferedWriter(OutputStreamWriter(clientSocket.getOutputStream()))
 
-            // Función de ayuda para enviar objetos como JSON
-            fun sendMessage(msg: NetworkMessage) {
-                output.write(gson.toJson(msg))
-                output.newLine()
-                output.flush()
-            }
-
-            // Ignoramos el mensaje inicial del cliente
-            input.readLine()
-
-            // Enviar bienvenida
+            input.readLine() // Ignoramos hello inicial
             sendMessage(NetworkMessage(type = "WELCOME", payload = "Hola cliente"))
 
             var word = ""
             var attempts = 0
-            val maxAttempts = 6 // Máximo de intentos permitidos en Wordle
+            val maxAttempts = 6
 
             while (true) {
                 val msgJson = input.readLine() ?: break
-
-                // Convertir el JSON recibido a objeto
                 val msg = try {
                     gson.fromJson(msgJson, NetworkMessage::class.java)
                 } catch (e: Exception) { continue }
 
                 when (msg.type) {
                     "GET_RECORDS" -> {
-                        // Enviar el JSON de records incrustado en el payload
-                        val recordsStr = RecordManager.getRecordsJson()
-                        sendMessage(NetworkMessage(type = "RECORDS_DATA", payload = recordsStr))
+                        sendMessage(NetworkMessage(type = "RECORDS_DATA", payload = RecordManager.getRecordsJson()))
+                    }
+                    "JOIN_QUEUE" -> {
+                        inPvPMode = true
+                        sendMessage(NetworkMessage(type = "INFO", payload = "Buscando oponente para PVP..."))
+                        GameManager.joinQueue(this)
                     }
                     "START_GAME" -> {
-                        word = pickRandomWord("easy.txt", 5)
+                        inPvPMode = false
+                        word = DictionaryService.pickRandomWord("easy.txt", 5)
                         attempts = 0
                         sendMessage(NetworkMessage(type = "START_GAME", mode = "PVE", wordLength = 5, rounds = 1))
-                        println("Partida PVE iniciada con palabra secreta: $word")
                     }
                     "GUESS" -> {
-                        if (word.isEmpty()) continue
-                        attempts++
                         val guessedWord = msg.word?.uppercase() ?: continue
 
-                        if (guessedWord.length != word.length) {
-                            sendMessage(NetworkMessage(type = "ERROR", payload = "La palabra debe tener ${word.length} letras"))
-                            continue
+                        // Si está en una partida PVP, dejamos que PvPGame se encargue
+                        if (inPvPMode && currentGame != null) {
+                            currentGame?.processGuess(this, guessedWord, msg.attempt ?: 1)
                         }
+                        // Si está en PVE, usamos la lógica clásica
+                        else if (!inPvPMode) {
+                            if (word.isEmpty()) continue
+                            attempts++
+                            if (guessedWord.length != word.length) {
+                                sendMessage(NetworkMessage(type = "ERROR", payload = "La palabra debe tener ${word.length} letras"))
+                                continue
+                            }
 
-                        // Comprobar letras
-                        val resultList = guessedWord.mapIndexed { index, c ->
-                            when {
-                                word[index] == c -> LetterResult(c.toString(), "CORRECT")
-                                word.contains(c) -> LetterResult(c.toString(), "PRESENT")
-                                else -> LetterResult(c.toString(), "ABSENT")
+                            val resultList = guessedWord.mapIndexed { index, c ->
+                                when {
+                                    word[index] == c -> LetterResult(c.toString(), "CORRECT")
+                                    word.contains(c) -> LetterResult(c.toString(), "PRESENT")
+                                    else -> LetterResult(c.toString(), "ABSENT")
+                                }
+                            }
+                            sendMessage(NetworkMessage(type = "GUESS_RESULT", word = guessedWord, result = resultList))
+
+                            if (guessedWord == word) {
+                                sendMessage(NetworkMessage(type = "ROUND_WINNER", player = "CLIENT", attempts = attempts, word = word))
+                                RecordManager.recordWinPVE("Global")
+                                word = ""
+                            } else if (attempts >= maxAttempts) {
+                                sendMessage(NetworkMessage(type = "ERROR", payload = "¡Te quedaste sin intentos! La palabra era: $word"))
+                                RecordManager.recordLossPVE("Global")
+                                word = ""
                             }
                         }
-
-                        sendMessage(NetworkMessage(type = "GUESS_RESULT", word = guessedWord, result = resultList))
-
-                        if (guessedWord == word) {
-                            sendMessage(NetworkMessage(type = "ROUND_WINNER", player = "CLIENT", attempts = attempts, word = word))
-                            RecordManager.recordWinPVE("Global") // Guardamos victoria
-                            word = "" // Reiniciamos palabra para evitar bugs
-                        } else if (attempts >= maxAttempts) {
-                            sendMessage(NetworkMessage(type = "ERROR", payload = "¡Te quedaste sin intentos! La palabra era: $word"))
-                            RecordManager.recordLossPVE("Global") // Guardamos derrota
-                            word = ""
-                        }
+                    }
+                    "LEAVE_GAME" -> {
+                        GameManager.leaveQueue(this)
+                        currentGame?.playerDisconnected(this)
+                        inPvPMode = false
                     }
                 }
             }
         } catch (e: Exception) {
-            println("Error de conexión: ${e.message}")
+            println("Conexión perdida con un cliente.")
         } finally {
+            GameManager.leaveQueue(this)
+            currentGame?.playerDisconnected(this)
             clientSocket.close()
-            val remaining = activeClients.decrementAndGet()
-            println("Cliente desconectado. Activos: $remaining")
+            activeClients.decrementAndGet()
         }
-    }
-
-    private fun pickRandomWord(filename: String, length: Int): String {
-        val stream = javaClass.getResourceAsStream("/dictionary/$filename")
-            ?: throw RuntimeException("No se encontró $filename en resources/dictionary")
-        val words = stream.bufferedReader().readLines().filter { it.length == length }
-        if (words.isEmpty()) throw RuntimeException("No hay palabras en $filename")
-        return words.random().uppercase()
     }
 }

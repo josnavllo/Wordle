@@ -3,8 +3,8 @@ package org.example.server.src
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import org.example.server.src.network.ClientHandler // Import actualizado a la nueva carpeta
 import org.example.server.src.config.ServerConfig
-import org.example.server.src.network.ClientHandler
 import java.net.ServerSocket
 import java.util.concurrent.atomic.AtomicInteger
 

@@ -10,7 +10,7 @@ class ServerConnection(private val host: String, private val port: Int) {
     private var output: BufferedWriter? = null
     private var input: BufferedReader? = null
     private var listener: MessageListener? = null
-    private val gson = Gson() // Instancia de Gson
+    private val gson = Gson()
 
     fun connect() {
         socket = Socket(host, port)
@@ -21,7 +21,7 @@ class ServerConnection(private val host: String, private val port: Int) {
         Thread(listener).start()
     }
 
-    // 🔹 Ahora enviamos objetos en lugar de Strings
+
     fun sendMessage(message: NetworkMessage) {
         val jsonString = gson.toJson(message)
         output?.write(jsonString)

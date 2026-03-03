@@ -15,7 +15,7 @@ object WordleUI {
     var opponentAttempts = 0
     var isPvP = false
 
-    // 🔹 NUEVO: Guardamos cuándo empieza la partida localmente
+
     private var startTime: Long = 0
 
     fun reset(pvp: Boolean) {

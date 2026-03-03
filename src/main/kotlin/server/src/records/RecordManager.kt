@@ -42,8 +42,7 @@ object RecordManager {
         return records.getOrPut(playerName) { PlayerStats(playerName) }
     }
 
-    // 🔹 Hemos añadido 'attempts' (intentos) y 'timeInSeconds' (tiempo) con valores por defecto
-    // para que no te dé error en los otros archivos mientras los actualizamos.
+
     @Synchronized
     fun recordWinPVE(playerName: String, attempts: Int = 1, timeInSeconds: Long = 0) {
         val stats = getStats(playerName)

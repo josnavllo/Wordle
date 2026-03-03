@@ -71,8 +71,7 @@ class MainMenu(private val connection: ServerConnection) {
             print("> ")
             val guess = readlnOrNull()?.uppercase()?.trim() ?: ""
 
-            // 1. Si el rival ha ganado o abandonado mientras esperábamos,
-            // ese ENTER que acabas de pulsar nos sirve directamente para salir.
+
             if (!GameState.isGameActive) {
                 break
             }
@@ -94,13 +93,12 @@ class MainMenu(private val connection: ServerConnection) {
             attempts++
             connection.sendMessage(NetworkMessage(type = "GUESS", word = guess, attempt = attempts))
 
-            // Damos tiempo al servidor para comprobar si hemos ganado
+
             Thread.sleep(300)
 
-            // 2. Si ESTA última palabra que hemos enviado terminó el juego...
+
             if (!GameState.isGameActive) {
-                // El MessageListener acaba de imprimir "Pulsa ENTER...",
-                // así que pausamos este código esperando a que lo pulses.
+
                 readlnOrNull()
                 break
             }

@@ -12,7 +12,6 @@ object GameManager {
     )
 
     fun joinQueue(client: ClientHandler, difficulty: String) {
-        // Usamos EASY por defecto si mandan algo raro
         val queue = queues[difficulty] ?: queues["EASY"]!!
 
         if (!queue.contains(client)) {

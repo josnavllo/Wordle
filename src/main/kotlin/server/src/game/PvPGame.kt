@@ -9,6 +9,7 @@ import server.src.records.RecordManager
 class PvPGame(private val player1: ClientHandler, private val player2: ClientHandler, private val difficulty: String) {
     private val secretWord = DictionaryService.pickRandomWord("${difficulty.lowercase()}.txt", 5)
     private var isGameOver = false
+    private val startTime = System.currentTimeMillis()
 
     fun start() {
         val startMsg = NetworkMessage(type = "START_GAME", mode = "PVP", wordLength = 5, rounds = 1)
@@ -30,26 +31,45 @@ class PvPGame(private val player1: ClientHandler, private val player2: ClientHan
             return
         }
 
-        // Analizamos la palabra
-        val resultList = guessedWord.mapIndexed { index, c ->
-            when {
-                secretWord[index] == c -> LetterResult(c.toString(), "CORRECT")
-                secretWord.contains(c) -> LetterResult(c.toString(), "PRESENT")
-                else -> LetterResult(c.toString(), "ABSENT")
+        opponent.sendMessage(NetworkMessage(type = "OPPONENT_PROGRESS", attempts = attempt))
+
+        // 🔹 NUEVA LÓGICA WORDLE EXACTA (Doble pasada para PVP)
+        val resultList = MutableList(secretWord.length) { LetterResult("", "ABSENT") }
+        val charCounts = mutableMapOf<Char, Int>()
+        secretWord.forEach { charCounts[it] = charCounts.getOrDefault(it, 0) + 1 }
+
+        // Primera pasada: Verdes
+        for (i in guessedWord.indices) {
+            if (guessedWord[i] == secretWord[i]) {
+                resultList[i] = LetterResult(guessedWord[i].toString(), "CORRECT")
+                charCounts[guessedWord[i]] = charCounts[guessedWord[i]]!! - 1
+            }
+        }
+
+        // Segunda pasada: Amarillos
+        for (i in guessedWord.indices) {
+            if (resultList[i].status != "CORRECT") {
+                val c = guessedWord[i]
+                if (charCounts.getOrDefault(c, 0) > 0) {
+                    resultList[i] = LetterResult(c.toString(), "PRESENT")
+                    charCounts[c] = charCounts[c]!! - 1
+                } else {
+                    resultList[i] = LetterResult(c.toString(), "ABSENT")
+                }
             }
         }
 
         player.sendMessage(NetworkMessage(type = "GUESS_RESULT", word = guessedWord, result = resultList))
 
-        // Si acierta, gana la partida inmediatamente
         if (guessedWord == secretWord) {
             isGameOver = true
+            val timeInSeconds = (System.currentTimeMillis() - startTime) / 1000
+
             player.sendMessage(NetworkMessage(type = "ROUND_WINNER", word = secretWord, attempts = attempt))
             opponent.sendMessage(NetworkMessage(type = "ERROR", payload = "¡Has perdido! Tu rival adivinó la palabra: $secretWord"))
 
-            // 🔹 Usamos el nombre del jugador en lugar de "Global"
-            RecordManager.recordWinPVP(player.playerName)
-            RecordManager.recordLossPVP(opponent.playerName)
+            RecordManager.recordWinPVP(player.playerName, attempt, timeInSeconds)
+            RecordManager.recordLossPVP(opponent.playerName, timeInSeconds)
 
             player.currentGame = null
             opponent.currentGame = null
@@ -62,12 +82,13 @@ class PvPGame(private val player1: ClientHandler, private val player2: ClientHan
     fun playerDisconnected(player: ClientHandler) {
         if (isGameOver) return
         isGameOver = true
+        val timeInSeconds = (System.currentTimeMillis() - startTime) / 1000
         val opponent = if (player == player1) player2 else player1
+
         opponent.sendMessage(NetworkMessage(type = "ERROR", payload = "Tu rival se ha desconectado. ¡Ganas por abandono!"))
 
-        // 🔹 Si el rival se desconecta en medio de la partida, le damos la victoria al que se quedó
-        RecordManager.recordWinPVP(opponent.playerName)
-        RecordManager.recordLossPVP(player.playerName)
+        RecordManager.recordWinPVP(opponent.playerName, 1, timeInSeconds)
+        RecordManager.recordLossPVP(player.playerName, timeInSeconds)
 
         player.currentGame = null
         opponent.currentGame = null

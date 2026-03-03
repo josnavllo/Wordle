@@ -14,6 +14,7 @@ import java.io.OutputStreamWriter
 import java.net.Socket
 import java.util.concurrent.atomic.AtomicInteger
 
+
 class ClientHandler(
     private val clientSocket: Socket,
     private val activeClients: AtomicInteger
@@ -22,10 +23,10 @@ class ClientHandler(
     private val gson = Gson()
     private lateinit var output: BufferedWriter
 
-    // Estado del jugador
     var currentGame: PvPGame? = null
     var inPvPMode = false
-    var playerName: String = "Anónimo" // 🔹 NUEVO: Aquí guardaremos su nombre
+    var playerName: String = "Anónimo"
+    var startTime: Long = 0
 
     @Synchronized
     fun sendMessage(msg: NetworkMessage) {
@@ -43,7 +44,6 @@ class ClientHandler(
             val input = BufferedReader(InputStreamReader(clientSocket.getInputStream()))
             output = BufferedWriter(OutputStreamWriter(clientSocket.getOutputStream()))
 
-            // Enviamos la bienvenida
             sendMessage(NetworkMessage(type = "WELCOME", payload = "Hola cliente"))
 
             var word = ""
@@ -58,7 +58,6 @@ class ClientHandler(
 
                 when (msg.type) {
                     "HELLO" -> {
-                        // 🔹 NUEVO: Cuando llega el saludo, guardamos su nombre
                         playerName = msg.player ?: "Anónimo"
                         println("Se ha conectado el jugador: $playerName")
                     }
@@ -76,6 +75,7 @@ class ClientHandler(
                         val diff = msg.difficulty ?: "EASY"
                         word = DictionaryService.pickRandomWord("${diff.lowercase()}.txt", 5)
                         attempts = 0
+                        startTime = System.currentTimeMillis()
                         sendMessage(NetworkMessage(type = "START_GAME", mode = "PVE", difficulty = diff, wordLength = 5, rounds = 1))
                     }
                     "GUESS" -> {
@@ -92,24 +92,43 @@ class ClientHandler(
                                 continue
                             }
 
-                            val resultList = guessedWord.mapIndexed { index, c ->
-                                when {
-                                    word[index] == c -> LetterResult(c.toString(), "CORRECT")
-                                    word.contains(c) -> LetterResult(c.toString(), "PRESENT")
-                                    else -> LetterResult(c.toString(), "ABSENT")
+                            // 🔹 NUEVA LÓGICA WORDLE EXACTA (Doble pasada)
+                            val resultList = MutableList(word.length) { LetterResult("", "ABSENT") }
+                            val charCounts = mutableMapOf<Char, Int>()
+                            word.forEach { charCounts[it] = charCounts.getOrDefault(it, 0) + 1 }
+
+                            // Primera pasada: Verdes
+                            for (i in guessedWord.indices) {
+                                if (guessedWord[i] == word[i]) {
+                                    resultList[i] = LetterResult(guessedWord[i].toString(), "CORRECT")
+                                    charCounts[guessedWord[i]] = charCounts[guessedWord[i]]!! - 1
                                 }
                             }
+
+                            // Segunda pasada: Amarillos
+                            for (i in guessedWord.indices) {
+                                if (resultList[i].status != "CORRECT") {
+                                    val c = guessedWord[i]
+                                    if (charCounts.getOrDefault(c, 0) > 0) {
+                                        resultList[i] = LetterResult(c.toString(), "PRESENT")
+                                        charCounts[c] = charCounts[c]!! - 1
+                                    } else {
+                                        resultList[i] = LetterResult(c.toString(), "ABSENT")
+                                    }
+                                }
+                            }
+
                             sendMessage(NetworkMessage(type = "GUESS_RESULT", word = guessedWord, result = resultList))
 
                             if (guessedWord == word) {
+                                val timeSecs = (System.currentTimeMillis() - startTime) / 1000
                                 sendMessage(NetworkMessage(type = "ROUND_WINNER", player = playerName, attempts = attempts, word = word))
-                                // 🔹 Guardamos la victoria PVE usando el nombre del jugador
-                                RecordManager.recordWinPVE(playerName)
+                                RecordManager.recordWinPVE(playerName, attempts, timeSecs)
                                 word = ""
                             } else if (attempts >= maxAttempts) {
+                                val timeSecs = (System.currentTimeMillis() - startTime) / 1000
                                 sendMessage(NetworkMessage(type = "ERROR", payload = "¡Te quedaste sin intentos! La palabra era: $word"))
-                                // 🔹 Guardamos la derrota PVE usando su nombre
-                                RecordManager.recordLossPVE(playerName)
+                                RecordManager.recordLossPVE(playerName, timeSecs)
                                 word = ""
                             }
                         }

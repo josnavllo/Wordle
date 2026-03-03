@@ -8,22 +8,25 @@ object WordleUI {
     private const val BG_YELLOW = "\u001B[43m\u001B[30m"
     private const val BG_GRAY = "\u001B[100m\u001B[37m"
 
-    // La cuadrícula de 6 filas y 5 columnas
     private var grid = MutableList(6) { MutableList(5) { LetterResult(" ", "EMPTY") } }
-    // El estado del teclado
     private var keyboard = mutableMapOf<String, String>()
 
     var currentAttempt = 0
     var opponentAttempts = 0
     var isPvP = false
 
+    // 🔹 NUEVO: Guardamos cuándo empieza la partida localmente
+    private var startTime: Long = 0
+
     fun reset(pvp: Boolean) {
         grid = MutableList(6) { MutableList(5) { LetterResult(" ", "EMPTY") } }
         keyboard.clear()
-        "QWERTYUIOPASDFGHJKLZXCVBNM".forEach { keyboard[it.toString()] = "EMPTY" }
+        "QWERTYUIOPASDFGHJKLÑZXCVBNM".forEach { keyboard[it.toString()] = "EMPTY" }
         currentAttempt = 0
         opponentAttempts = 0
         isPvP = pvp
+        // 🔹 NUEVO: Iniciamos el reloj
+        startTime = System.currentTimeMillis()
     }
 
     fun addAttempt(result: List<LetterResult>) {
@@ -31,7 +34,6 @@ object WordleUI {
             grid[currentAttempt] = result.toMutableList()
             currentAttempt++
 
-            // Actualizamos el teclado: Verde manda sobre Amarillo, Amarillo manda sobre Gris.
             result.forEach {
                 val currentStatus = keyboard[it.letter] ?: "EMPTY"
                 if (it.status == "CORRECT") keyboard[it.letter] = "CORRECT"
@@ -42,22 +44,27 @@ object WordleUI {
     }
 
     fun draw() {
-        // "Limpiamos" la consola imprimiendo saltos de línea para que parezca una pantalla fija
         println("\n".repeat(30))
 
-        // --- PANEL DE ESTADO ---
+        // 🔹 NUEVO: Calculamos el tiempo formateado en MM:SS
+        val elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000
+        val minutes = elapsedSeconds / 60
+        val seconds = elapsedSeconds % 60
+        val timeString = String.format("%02d:%02d", minutes, seconds)
+
         println("╔══════════════════════════════════════╗")
         println("║         WORDLE MULTIJUGADOR          ║")
         println("╠══════════════════════════════════════╣")
         println("║ Intentos restantes: ${6 - currentAttempt}                ║")
+        // 🔹 Añadimos el tiempo al panel de estado
+        println("║ Tiempo transcurrido: $timeString           ║")
         if (isPvP) {
             println("║ Progreso rival: $opponentAttempts/6 intentos          ║")
         }
         println("╚══════════════════════════════════════╝\n")
 
-        // --- CUADRÍCULA 6x5 ---
         for (row in grid) {
-            var rowStr = "          " // Espaciado para centrar
+            var rowStr = "          "
             for (cell in row) {
                 val color = when(cell.status) {
                     "CORRECT" -> BG_GREEN
@@ -68,12 +75,11 @@ object WordleUI {
                 rowStr += if (cell.status == "EMPTY") "[   ] " else "$color[ ${cell.letter} ]$RESET "
             }
             println(rowStr)
-            println() // Espacio entre filas
+            println()
         }
 
-        // --- TECLADO QWERTY ---
         println("\n        --- TECLADO ---")
-        val rows = listOf("QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM")
+        val rows = listOf("QWERTYUIOP", "ASDFGHJKLÑ", "ZXCVBNM")
         for (r in rows) {
             var kStr = ""
             for (char in r) {
@@ -86,8 +92,7 @@ object WordleUI {
                 }
                 kStr += if (status == "EMPTY") " $char " else "$color $char $RESET"
             }
-            // Centrado bonito del teclado
-            val padding = if (r.startsWith("A")) "   " else if (r.startsWith("Z")) "      " else " "
+            val padding = if (r.startsWith("A")) "  " else if (r.startsWith("Z")) "       " else " "
             println("    " + padding + kStr)
             println()
         }
